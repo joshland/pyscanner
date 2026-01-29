@@ -242,6 +242,12 @@ def scan(
 
 @app.command()
 def report(
+    known_hosts_path: Path = typer.Option(
+        None,
+        "--known-hosts-path",
+        "-k",
+        help="Path to known_hosts file",
+    ),
     debug: bool = typer.Option(False, "--debug", "-d", help="Enable debug logging"),
 ):
     """Show the results of the last scan again."""
@@ -252,6 +258,15 @@ def report(
     else:
         logger.add(lambda msg: print(msg, end=""), level="INFO")
 
+    config = load_config()
+    known_hosts_path = Path(known_hosts_path or config.get("known_hosts_path"))
+    known_hosts_path = known_hosts_path.expanduser()
+
+    logger.debug(f"Using known_hosts path: {known_hosts_path}")
+
+    known_mapping = parse_known_hosts(known_hosts_path)
+    logger.debug(f"Loaded {len(known_mapping)} known host entries")
+
     init_db()
 
     results = get_last_scan_results()
@@ -261,7 +276,7 @@ def report(
 
     logger.debug(f"Retrieved {len(results)} results from last scan")
 
-    display_results(results)
+    display_results(results, known_mapping)
 
 
 @app.command()
