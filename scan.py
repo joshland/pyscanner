@@ -266,11 +266,14 @@ def report(
 
 @app.command()
 def name(
-    last_scan_ip: str = typer.Argument(..., help="Last scan IP address"),
-    hostname: str = typer.Argument(..., help="Hostname to associate"),
+    last_scan_ip: str = typer.Argument(
+        None, help="Last scan IP address (for add/update)"
+    ),
+    hostname: str = typer.Argument(None, help="Hostname to associate or delete"),
+    del_hostname: str = typer.Option(None, "--del", "-D", help="Hostname to delete"),
     debug: bool = typer.Option(False, "--debug", "-d", help="Enable debug logging"),
 ):
-    """Identify a hostname with an SSH fingerprint."""
+    """Identify a hostname with an SSH fingerprint, or delete a hostname mapping."""
 
     logger.remove()
     if debug:
@@ -279,6 +282,16 @@ def name(
         logger.add(lambda msg: print(msg, end=""), level="INFO")
 
     init_db()
+
+    if del_hostname:
+        delete_hostname(del_hostname)
+        return
+
+    if not hostname or not last_scan_ip:
+        logger.error("Both IP and hostname are required for add/update")
+        logger.info("Usage: python scan.py name <ip> <hostname>")
+        logger.info("Or: python scan.py name --del <hostname>")
+        raise typer.Exit(1)
 
     fingerprint = get_fingerprint_by_ip(last_scan_ip)
     if not fingerprint:
@@ -317,6 +330,35 @@ def name(
         f"✓ Hostname '{hostname}' associated with fingerprint SHA256:{fingerprint[:20]}..."
     )
     print(f"  Last IP: {last_scan_ip}")
+
+
+def delete_hostname(hostname: str):
+    """Delete a hostname mapping from the database."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT fingerprint FROM hostnames WHERE hostname = ?", (hostname,))
+    result = cursor.fetchone()
+
+    if not result:
+        conn.close()
+        logger.error(f"Hostname '{hostname}' not found in database")
+        raise typer.Exit(1)
+
+    fingerprint = result[0]
+    cursor.execute("DELETE FROM hostnames WHERE hostname = ?", (hostname,))
+    deleted_count = cursor.rowcount
+
+    conn.commit()
+    conn.close()
+
+    if deleted_count > 0:
+        logger.info(f"Deleted hostname mapping: {hostname}")
+        print(
+            f"✓ Deleted hostname '{hostname}' (fingerprint: SHA256:{fingerprint[:20]}...)"
+        )
+    else:
+        logger.warning(f"No hostname mapping found for '{hostname}'")
 
 
 def get_fingerprint(key):

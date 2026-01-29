@@ -24,6 +24,9 @@ python scan.py report
 # Name a host (identify hostname with fingerprint)
 python scan.py name 10.12.1.80 ranos
 
+# Delete a hostname mapping
+python scan.py name --del ranos
+
 # Install dependencies
 pip install -r requirements.txt
 
