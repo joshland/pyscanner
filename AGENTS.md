@@ -10,16 +10,19 @@ Python network scanner that identifies SSH hosts by their public key fingerprint
 
 ```bash
 # Run the main script (scans network using config defaults)
-python scan.py main
+python scan.py scan
 
 # Scan with specific network prefix
-python scan.py main --network-prefix 192.168.1.0/24
+python scan.py scan --network-prefix 192.168.1.0/24
 
 # Scan with debug logging
-python scan.py main --network-prefix 192.168.1.0/24 --debug
+python scan.py scan --network-prefix 192.168.1.0/24 --debug
+
+# Show report of last scan
+python scan.py report
 
 # Name a host (identify hostname with fingerprint)
-python scan.py namehost 10.12.1.80 ranos
+python scan.py name 10.12.1.80 ranos
 
 # Install dependencies
 pip install -r requirements.txt
@@ -41,6 +44,22 @@ mypy scan.py
 
 Note: This project currently has no formal test suite. When adding tests, use pytest.
 
+## Output Format
+
+Scan results and reports use the following column format:
+- **[Host]**: Current IP address of the SSH host
+- **[Hostname]**: Known hostname(s) associated with the SSH fingerprint (comma-separated)
+- **[Past Addresses]**: Historical addresses from known_hosts file for this fingerprint
+- **[Short SSH Fingerprint]**: First 20 characters of SHA256 fingerprint
+
+Example:
+```
+[Host]             | [Hostname]           | [Past Addresses]               | [Short SSH Fingerprint]
+--------------------------------------------------------------------------------------------------------------
+192.168.1.10       | nas-server           | 10.0.1.50                      | SHA256:RNr98Lu4wmLwTu4hZ2ez...
+192.168.1.20       | desktop              | No history                     | SHA256:AbCdEfGhIjKlMnOpQrSt...
+```
+
 ## Configuration and Data Storage
 
 ### Config File
@@ -55,7 +74,7 @@ Note: This project currently has no formal test suite. When adding tests, use py
   - `scans`: Stores scan results (ip, fingerprint, timestamp)
   - `hostnames`: Maps hostnames to fingerprints (hostname, fingerprint, last_ip, timestamp)
 - Created automatically on first scan
-- Used by namehost command to resolve IPs to hostnames
+- Used by name and report commands to resolve IPs to hostnames
 
 ### Database Schema
 

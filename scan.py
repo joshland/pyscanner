@@ -114,6 +114,66 @@ def get_fingerprint_by_ip(ip):
     return result[0] if result else None
 
 
+def get_hostnames_by_fingerprint(fingerprint):
+    """Get all hostnames associated with a fingerprint."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT hostname FROM hostnames WHERE fingerprint = ? ORDER BY timestamp DESC",
+        (fingerprint,),
+    )
+    results = [row[0] for row in cursor.fetchall()]
+    conn.close()
+    return results
+
+
+def get_last_scan_results():
+    """Get the results of the most recent scan from the database."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT MAX(timestamp) FROM scans")
+    result = cursor.fetchone()
+    if not result or not result[0]:
+        conn.close()
+        return None
+
+    max_timestamp = result[0]
+
+    cursor.execute(
+        "SELECT DISTINCT ip, fingerprint FROM scans WHERE timestamp = ?",
+        (max_timestamp,),
+    )
+    results = cursor.fetchall()
+    conn.close()
+
+    return results
+
+
+def display_results(results, known_mapping=None):
+    """Display scan results in the standard format."""
+    print(
+        f"\n{'[Host]':<18} | {'[Hostname]':<20} | {'[Past Addresses]':<30} | {'[Short SSH Fingerprint]'}"
+    )
+    print("-" * 110)
+
+    for ip, fp in results:
+        hostnames = get_hostnames_by_fingerprint(fp)
+        hostname_str = ", ".join(hostnames) if hostnames else "Unknown"
+
+        if known_mapping:
+            past_entries = known_mapping.get(fp, [])
+            others = [e for e in past_entries if e != ip]
+            past_str = ", ".join(others) if others else "No history"
+        else:
+            past_str = "No history"
+
+        short_fp = f"SHA256:{fp[:20]}..."
+
+        print(f"{ip:<18} | {hostname_str:<20} | {past_str:<30} | {short_fp}")
+        logger.debug(f"Host {ip}: hostname={hostname_str}, fingerprint={fp}")
+
+
 @app.command()
 def scan(
     network_prefix: str = typer.Option(
@@ -177,20 +237,31 @@ def scan(
     init_db()
     save_scan_results(living_servers)
 
-    print(
-        f"\n{'[Host]':<18} | {'[Short Fingerprint]':<25} | {'[Past IP Addresses/Aliases]'}"
-    )
-    print("-" * 100)
+    display_results(living_servers, known_mapping)
 
-    for current_ip, fp in living_servers:
-        past_entries = known_mapping.get(fp, ["No history found"])
-        others = [e for e in past_entries if e != current_ip]
-        past_str = ", ".join(others) if others else "New (Not in known_hosts)"
 
-        short_fp = f"SHA256:{fp[:20]}..."
+@app.command()
+def report(
+    debug: bool = typer.Option(False, "--debug", "-d", help="Enable debug logging"),
+):
+    """Show the results of the last scan again."""
 
-        print(f"{current_ip:<18} | {short_fp:<25} | {past_str}")
-        logger.debug(f"Host {current_ip}: fingerprint={fp}, history={past_str}")
+    logger.remove()
+    if debug:
+        logger.add(lambda msg: print(msg, end=""), level="DEBUG")
+    else:
+        logger.add(lambda msg: print(msg, end=""), level="INFO")
+
+    init_db()
+
+    results = get_last_scan_results()
+    if not results:
+        logger.info("No scan results found. Run a scan first.")
+        raise typer.Exit(1)
+
+    logger.debug(f"Retrieved {len(results)} results from last scan")
+
+    display_results(results)
 
 
 @app.command()
