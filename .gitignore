@@ -1,0 +1,4 @@
+__pycache__
+activate
+.venv
+sshscanner.egg-info

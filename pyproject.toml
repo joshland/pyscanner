@@ -46,6 +46,6 @@ dev = [
 sshscanner = "scan:app"
 
 [project.urls]
-Homepage = "https://github.com/yourusername/sshscanner"
-Repository = "https://github.com/yourusername/sshscanner"
-Issues = "https://github.com/yourusername/sshscanner/issues"
+Homepage = "https://github.com/joshland/pyscanner"
+Repository = "https://github.com/joshland/pyscanner"
+Issues = "https://github.com/joshland/pyscanner/issues"
