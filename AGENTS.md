@@ -9,25 +9,33 @@ Python network scanner that identifies SSH hosts by their public key fingerprint
 ## Build/Lint/Test Commands
 
 ```bash
-# Run the main script (scans network using config defaults)
+# Install the package (creates sshscanner command)
+pip install -e .
+# or with uv:
+uv pip install -e .
+
+# Run using the installed command (scans network using config defaults)
+sshscanner scan
+
+# Or run directly with Python
 python scan.py scan
 
 # Scan with specific network prefix
-python scan.py scan --network-prefix 192.168.1.0/24
+sshscanner scan --network-prefix 192.168.1.0/24
 
 # Scan with debug logging
-python scan.py scan --network-prefix 192.168.1.0/24 --debug
+sshscanner scan --network-prefix 192.168.1.0/24 --debug
 
 # Show report of last scan
-python scan.py report
+sshscanner report
 
 # Name a host (identify hostname with fingerprint)
-python scan.py name 10.12.1.80 ranos
+sshscanner name 10.12.1.80 ranos
 
 # Delete a hostname mapping
-python scan.py name --del ranos
+sshscanner name --del ranos
 
-# Install dependencies
+# Install dependencies directly (without package install)
 pip install -r requirements.txt
 
 # Lint (if tools are available)
